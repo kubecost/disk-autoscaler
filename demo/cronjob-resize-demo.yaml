@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: resize-to-save-costs
+spec:
+  schedule: "5,15,25,35,45,55 * * * *" # minutes that end in 5
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: demo-service-account
+          restartPolicy: Never
+          containers:
+          - name: resize-curl
+            image: alpine/k8s:1.29.2
+            imagePullPolicy: IfNotPresent
+            command: ["bash", "/apps/resize.sh"]
+            volumeMounts:
+            - name: apps
+              mountPath: /apps
+            securityContext:
+              allowPrivilegeEscalation: false
+              privileged: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+          volumes:
+          - name: apps
+            configMap:
+              name: cronjob-configmaps
+          - name: docs
+            emptyDir: {}
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            fsGroup: 1001
+            runAsGroup: 1001
+            runAsUser: 1001
+            fsGroupChangePolicy: OnRootMismatch

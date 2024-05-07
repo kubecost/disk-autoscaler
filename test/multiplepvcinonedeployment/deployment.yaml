@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-pvc-1
+spec:
+  storageClassName: gp3-wait-for-customer
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-pvc-2
+spec:
+  storageClassName: gp3-wait-for-customer
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-pvc-3
+spec:
+  storageClassName: gp3-wait-for-customer
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ubuntu-deployment-multiple-pvc
+spec:
+  selector:
+    matchLabels:
+      app: ubuntu
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ubuntu
+    spec:
+      containers:
+      - name: ubuntu
+        image: ubuntu
+        command:
+        - sleep
+        - "infinity"
+        volumeMounts:
+        - mountPath: /app/vol1
+          name: volume1
+        - mountPath: /app/vol2
+          name: volume2
+        - mountPath: /app/vol3
+          name: volume3
+      volumes:
+      - name: volume1
+        persistentVolumeClaim:
+          claimName: test-pvc-1
+      - name: volume2
+        persistentVolumeClaim:
+          claimName: test-pvc-2
+      - name: volume3
+        persistentVolumeClaim:
+          claimName: test-pvc-3

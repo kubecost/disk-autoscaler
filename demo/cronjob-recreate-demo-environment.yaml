@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: recreate-demo-environment
+spec:
+  schedule: "0,10,20,30,40,50 * * * *" # odd minutes
+  # schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: demo-service-account
+          restartPolicy: Never
+          containers:
+          - name: recreate-environments
+            image: alpine/k8s:1.29.2
+            imagePullPolicy: IfNotPresent
+            command: ["bash", "/apps/recreate.sh"]
+            volumeMounts:
+            - name: apps
+              mountPath: /apps
+            securityContext:
+              allowPrivilegeEscalation: false
+              privileged: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+          volumes:
+          - name: apps
+            configMap:
+              name: cronjob-configmaps
+          - name: docs
+            emptyDir: {}
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            fsGroup: 1001
+            runAsGroup: 1001
+            runAsUser: 1001
+            fsGroupChangePolicy: OnRootMismatch

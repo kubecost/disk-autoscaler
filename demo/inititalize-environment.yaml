@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: original-pvc
+spec:
+  storageClassName: gp3
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox-deployment
+spec:
+  selector:
+    matchLabels:
+      app: busybox
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: busybox
+      annotations:
+        request.autodiskscaling.kubecost.com/enabled: "true"
+        request.autodiskscaling.kubecost.com/interval: "7h"
+        request.autodiskscaling.kubecost.com/targetUtilization: "80"
+    spec:
+      initContainers:
+      - name: echo-date
+        image: busybox
+        command: ['sh', '-c', 'date > /app/folder/date.txt']
+        volumeMounts:
+        - mountPath: /app/folder
+          name: volume
+      containers:
+      - name: busybox
+        image: busybox
+        command:
+        - sleep
+        - "infinity"
+        volumeMounts:
+        - mountPath: /app/folder
+          name: volume
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+      volumes:
+      - name: volume
+        persistentVolumeClaim:
+          claimName: original-pvc

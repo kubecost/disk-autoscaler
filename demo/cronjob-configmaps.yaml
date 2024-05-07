@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cronjob-configmaps
+data:
+  recreate.sh: |-
+    kubectl delete -f /apps/test-deployment.yaml
+    kubectl delete pod kubecost-data-mover-pod
+    kubectl delete pvc original-pvc-kc-disk-scaler
+    kubectl apply -f /apps/test-deployment.yaml
+  resize.sh: |-
+    curl "http://disk-autoscaler-svc:9730/diskAutoScaler/run" \
+      -d namespace=kubecost \
+      -d deployment=busybox-deployment \
+      -d pvClaim=original-pvc \
+      -d resizeTo=1Gi -G
+  pvc.yaml: |-
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: original-pvc
+    spec:
+      storageClassName: gp3
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 3Gi
+  test-deployment.yaml: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: busybox-deployment
+    spec:
+      selector:
+        matchLabels:
+          app: busybox
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: busybox
+        spec:
+          initContainers:
+          - name: init
+            image: busybox
+            command: ['sh', '-c', 'date > /app/folder/date.txt']
+            volumeMounts:
+            - mountPath: /app/folder
+              name: volume
+          containers:
+          - name: busybox
+            image: busybox
+            command:
+            - sleep
+            - "infinity"
+            volumeMounts:
+            - mountPath: /app/folder
+              name: volume
+          volumes:
+          - name: volume
+            persistentVolumeClaim:
+              claimName: original-pvc
