@@ -46,9 +46,6 @@ spec:
     app: disk-autoscaler
   type: ClusterIP
 ---
-# Please edit the DAS_COST_MODEL_PATH for the Kubecost service to 
-# specify the source from which you want recommendations to be derived.
-# Requires Kubecost Enterprise.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -69,10 +66,9 @@ spec:
           value: info
         - name: DAS_COST_MODEL_PATH
           value: http://kubecost-cost-analyzer.kubecost:9090/model
-        # namespaces disk auto scaler to not act on, the provided data is comma separated
         - name: DAS_EXCLUDE_NAMESPACES
           value: "kubecost,kube-system,kube-public"
-        image:  gcr.io/guestbook-227502/disk-autoscaler:0.0.16
+        image: gcr.io/guestbook-227502/disk-autoscaler:0.0.16
         imagePullPolicy: IfNotPresent
         name: disk-autoscaler
         ports:
