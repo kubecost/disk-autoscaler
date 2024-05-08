@@ -1,0 +1,69 @@
+name: "Bug Report"
+description: Report a bug.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please tell us about the bug.
+  - type: input
+    id: k8s-version
+    attributes:
+      label: Kubernetes Version
+      description: What version of Kubernetes are you running?
+    validations:
+      required: true
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Description
+      description: Describe what happened.
+    validations:
+      required: true
+  - type: textarea
+    id: bug-reproduce-steps
+    attributes:
+      label: Steps to reproduce
+      description: >-
+        What are the exact steps needed to reproduce the bug you experienced?
+        Please provide any and all manifests needed to reproduce your issue.
+        GitHub supports [syntax highlighting](https://docs.github.com/en/github/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks#syntax-highlighting) with code blocks.
+      value: |-
+        1. 
+    validations:
+      required: true
+  - type: textarea
+    id: bug-expectations
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: bug-screenshots
+    attributes:
+      label: Screenshots
+      description: >-
+        If you have any screenshots that would help, please paste them below.
+        GitHub allows you to copy-and-paste directly from the clipboard into the text area.
+        **Please avoid taking screenshots of either log or terminal output**; paste any textual output in the logs section below.
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >-
+        Please copy and paste any relevant log output.
+        This will be automatically formatted into code, so no need for backticks.
+      render: Shell
+  - type: checkboxes
+    id: troubleshooting
+    attributes:
+      label: Troubleshooting
+      description: >-
+        By submitting this issue, you agree that you have performed some basic attempts at researching and solving your problem.
+      options:
+        - label: I have searched other issues in this repository and mine is not recorded.
+          required: true
