@@ -1,0 +1,50 @@
+name: "Feature Request"
+description: Suggest a new feature.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please explain the feature you'd like to see.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Describe the problem.
+      placeholder: A clear and concise description of the problem statement.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution Description
+      description: Describe the solution you'd like.
+      placeholder: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Describe alternatives you've considered.
+      placeholder: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any additional context to this enhancement request.
+      placeholder: Add any other context or screenshots about the feature request here.
+    validations:
+      required: false
+  - type: checkboxes
+    id: troubleshooting
+    attributes:
+      label: Troubleshooting
+      description: >-
+        By submitting this issue, you agree to the following.
+      options:
+        - label: I have searched other issues in this repository and mine is not recorded.
+          required: true

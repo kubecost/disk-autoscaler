@@ -41,7 +41,7 @@ See [here](https://docs.kubecost.com/install-and-configure/install) for the full
 3. Install Disk Auto-Scaler. The below command assumes the `kubecost` Namespace already exists.
 
     ```sh
-    kubectl create -f https://raw.githubusercontent.com/kubecost/disk-auto-scaler/main/manifests/install.yaml
+    kubectl create -f https://raw.githubusercontent.com/kubecost/disk-autoscaler/main/manifests/install.yaml
     ```
 
 > [!NOTE]
