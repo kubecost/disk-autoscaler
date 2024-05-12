@@ -68,7 +68,7 @@ spec:
               value: http://kubecost-cost-analyzer.kubecost:9090/model
             - name: DAS_EXCLUDE_NAMESPACES
               value: "kubecost,kube-system,kube-public"
-          image: gcr.io/guestbook-227502/disk-autoscaler:0.0.17
+          image: gcr.io/kubecost1/disk-autoscaler:latest
           imagePullPolicy: IfNotPresent
           name: disk-autoscaler
           ports:
