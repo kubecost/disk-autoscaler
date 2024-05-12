@@ -1,6 +1,6 @@
 # Security
 
-Kubecost Disk Autoscaler uses modern software supply chain security methods including image signing, provenance attestation (SLSA level 3 compliant), built-time image scans, and software bill of material (SBOM) both of which are also attested.
+Kubecost Disk Autoscaler uses modern software supply chain security methods including image signing, provenance attestation (SLSA level 3 compliant), build-time image scans, and software bill of material (SBOM) both of which are also attested.
 
 Perform the following steps to verify these artifacts for yourself.
 
