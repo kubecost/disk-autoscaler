@@ -1,0 +1,233 @@
+### This workflow uses the SLSA container provenance generator workflow
+### (see https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md)
+### to generate a SLSA provenance type predicate for a container image built by ko and attesting to it and others
+### using keyless signing.
+name: release
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch: {}
+env:
+  REGISTRY: gcr.io/kubecost1
+  IMAGE_NAME: disk-autoscaler
+jobs:
+  # Publish with ko build
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      id-token: write
+    outputs:
+      image: ${{ steps.ko-build.outputs.image }}
+      digest: ${{ steps.set-digest.outputs.digest }}
+      sbom-digest: ${{ steps.calculate-sbom-hash.outputs.sbom_digest }}
+      # Re-declaring the global env vars as outputs as a workaround for reusable workflows
+      REGISTRY: ${{ env.REGISTRY }}
+      IMAGE_NAME: ${{ env.IMAGE_NAME }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
+
+    - name: Setup Golang
+      uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.1.0
+      with:
+        go-version: 1.22
+
+    - name: Setup ko
+      run: go install github.com/google/ko@latest
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: projects/416184586880/locations/global/workloadIdentityPools/integrations/providers/github-provider
+        service_account: github-actions@kubecost1.iam.gserviceaccount.com
+
+    - name: Setup gcloud
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: kubecost1
+
+    - name: gcloud auth configure-docker
+      run: |
+        gcloud --quiet auth configure-docker
+
+    - name: Publish image and SBOM (CycloneDX)
+      id: ko-build
+      # IMAGE will be in format <registry>/<org>/<repo>@<digest> ex ghcr.io/johndoe/redis@sha256:1b85db3f261af51914867eeda20a25bedf72fa406619bcdd60f0658f27b2722d
+      run: |
+        tag=$(echo ${{ github.ref }} | cut -c11-)
+        IMAGE=$(ko build ./cmd/diskautoscaler --bare -t latest -t ${{ github.sha }} -t ${tag} --sbom=cyclonedx --sbom-dir=./)
+        echo "The image generated is: $IMAGE"
+        echo "## Image summary" >> $GITHUB_STEP_SUMMARY
+        echo "Built image: $IMAGE" >> $GITHUB_STEP_SUMMARY
+        echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+        echo "image=$IMAGE" >> $GITHUB_OUTPUT
+        echo "Renaming output SBOM file to sbom.json."
+        for file in *.cyclonedx.json; do
+          mv -- "$file" "sbom.json"
+          break # Only rename the first file
+        done
+      env:
+        KO_DOCKER_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+    - name: Set digest
+      id: set-digest
+      # DIGEST will be in format sha256:<hash> ex sha256:1b85db3f261af51914867eeda20a25bedf72fa406619bcdd60f0658f27b2722d
+      run: |
+        DIGEST=$(echo -n $IMAGE | cut -d '@' -f2) 
+        echo "Digest from image is: $DIGEST"
+        echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+
+    - name: Calculate SBOM file hash
+      id: calculate-sbom-hash
+      run: |
+        SBOM_DIGEST=$(sha256sum sbom.json | awk '{print $1}')
+        echo "sbom_digest=$SBOM_DIGEST" >> $GITHUB_OUTPUT
+        echo "Hash of sbom.json is: $SBOM_DIGEST"
+
+    - name: Upload SBOM
+      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+      with:
+        name: sbom.json
+        path: sbom.json
+        if-no-files-found: error
+
+  # Use the container SLSA provenance generator.
+  provenance:
+    permissions:
+      id-token: write
+      contents: write
+      actions: read
+      packages: write
+    needs: build
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    # Can't use env global vars in a reusable workflow. See https://github.com/actions/runner/issues/2372
+    with:
+      digest: "${{ needs.build.outputs.digest }}"
+      image: ${{ needs.build.outputs.REGISTRY }}/${{needs.build.outputs.IMAGE_NAME}}
+      gcp-workload-identity-provider: projects/416184586880/locations/global/workloadIdentityPools/integrations/providers/github-provider
+      gcp-service-account: github-actions@kubecost1.iam.gserviceaccount.com
+
+  # Scan the image using Trivy. Check the hash of the scan file to ensure no tampering between jobs.
+  scan:
+    runs-on: ubuntu-latest
+    needs: [provenance, build]
+    permissions:
+      contents: read
+    outputs:
+      scan-digest: ${{ steps.calculate-scan-hash.outputs.scan_digest }}
+    env:
+      IMAGE: "${{ needs.build.outputs.image }}"
+    steps:
+    - name: Scan for vulnerabilities
+      uses: aquasecurity/trivy-action@b2933f565dbc598b29947660e66259e3c7bc8561 # v0.20.0 (Trivy v0.51.1)
+      with: 
+        image-ref: ${{ env.IMAGE }}
+        format: cosign-vuln
+        ignore-unfixed: true
+        output: scan.json
+
+    - name: Calculate scan file hash
+      id: calculate-scan-hash
+      run: |
+        SCAN_DIGEST=$(sha256sum scan.json | awk '{print $1}')
+        echo "scan_digest=$SCAN_DIGEST" >> $GITHUB_OUTPUT
+        echo "Hash of scan.json is: $SCAN_DIGEST"
+
+    - name: Upload vulnerability scan report
+      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+      with:
+        name: scan.json
+        path: scan.json
+        if-no-files-found: error
+
+  # Uses Cosign to sign and attest the scan and SBOM. Uses keyless signing for all steps.
+  attest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+      packages: write
+      id-token: write # Needed for OIDC and keyless signing
+    env:
+      IMAGE: "${{ needs.build.outputs.image }}"
+      SCAN_DIGEST: "${{ needs.scan.outputs.scan-digest }}"
+      SBOM_DIGEST: "${{ needs.build.outputs.sbom-digest }}"
+    needs: [provenance, scan, build]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: projects/416184586880/locations/global/workloadIdentityPools/integrations/providers/github-provider
+        service_account: github-actions@kubecost1.iam.gserviceaccount.com
+
+    - name: Setup gcloud
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: kubecost1
+
+    - name: gcloud auth configure-docker
+      run: |
+        gcloud --quiet auth configure-docker
+
+    - name: Download files
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+      with:
+        merge-multiple: true
+        path: ./
+
+    # Detect potential tampering with the files by comparing the pre-upload digest in the previous
+    # job with the post-download digest in this job. Fail if there is a mismatch.
+    - name: Verify scan and SBOM files
+      run: |
+        set -euo pipefail
+        echo "Hash of scan.json should be: $SCAN_DIGEST"
+        COMPUTED_HASH=$(sha256sum scan.json | awk '{print $1}')
+        echo "The current computed hash for scan.json is: $COMPUTED_HASH"
+        echo "If the two above hashes don't match, scan.json has been tampered with."
+        echo "$SCAN_DIGEST scan.json" | sha256sum --strict --check --status || exit -2
+        echo "--------------------------------"
+        echo "Hash of sbom.json should be: $SBOM_DIGEST"
+        COMPUTED_HASH=$(sha256sum sbom.json | awk '{print $1}')
+        echo "The current computed hash for sbom.json is: $COMPUTED_HASH"
+        echo "If the two above hashes don't match, sbom.json has been tampered with."
+        echo "$SBOM_DIGEST sbom.json" | sha256sum --strict --check --status || exit -2
+
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
+      with:
+        cosign-release: v2.2.4
+
+    - name: Sign image
+      run: |
+        cosign sign -a sha=${{ github.sha }} -a run_id=${{ github.run_id }} -a repo=${{ github.repository }} -a workflow=${{ github.workflow }} ${{ env.IMAGE }} --output-signature=./signature.sig -y
+        echo "## Supply Chain Summary" >> $GITHUB_STEP_SUMMARY
+        echo "Image signed: :heavy_check_mark:" >> $GITHUB_STEP_SUMMARY
+
+    - name: Attest SBOM
+      run: |
+        cosign attest --predicate sbom.json --type cyclonedx ${{ env.IMAGE }} -y
+        echo "Image SBOM attested: :heavy_check_mark:" >> $GITHUB_STEP_SUMMARY
+
+    - name: Attest Scan
+      run: |
+        cosign attest --predicate scan.json --type vuln ${{ env.IMAGE }} -y
+        echo "Image vulnerability scan attested:  :heavy_check_mark:" >> $GITHUB_STEP_SUMMARY
+
+    - name: Update install.yaml with new image
+      run: |
+        yq -i 'select(.kind=="Deployment") .spec.template.spec.containers[0].image = "${{ env.IMAGE }}"' manifests/install.yaml
+
+    - name: Add files to release assets
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          scan.json
+          sbom.json
+          signature.sig
+          manifests/install.yaml
