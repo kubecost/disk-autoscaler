@@ -9,24 +9,24 @@ kind: ClusterRole
 metadata:
   name: disk-auto-scaler-cr
 rules:
-- apiGroups: [""]
-  resources: ["*"]
-  verbs: ["*"]
-- apiGroups: ["apps"]
-  resources: ["*"]
-  verbs: ["*"]
-- apiGroups: ["storage.k8s.io"]
-  resources: ["*"]
-  verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["*"]
+    verbs: ["*"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: disk-auto-scaler-crb
 subjects:
-- kind: ServiceAccount
-  name: disk-auto-scaler-sa
-  namespace: kubecost
+  - kind: ServiceAccount
+    name: disk-auto-scaler-sa
+    namespace: kubecost
 roleRef:
   kind: ClusterRole
   name: disk-auto-scaler-cr
@@ -39,9 +39,9 @@ metadata:
   namespace: kubecost
 spec:
   ports:
-  - port: 9730
-    protocol: TCP
-    targetPort: 9730
+    - port: 9730
+      protocol: TCP
+      targetPort: 9730
   selector:
     app: disk-autoscaler
   type: ClusterIP
@@ -61,26 +61,26 @@ spec:
         app: disk-autoscaler
     spec:
       containers:
-      - env:
-        - name: DAS_LOG_LEVEL
-          value: info
-        - name: DAS_COST_MODEL_PATH
-          value: http://kubecost-cost-analyzer.kubecost:9090/model
-        - name: DAS_EXCLUDE_NAMESPACES
-          value: "kubecost,kube-system,kube-public"
-        image:  gcr.io/guestbook-227502/disk-autoscaler:0.0.17
-        imagePullPolicy: IfNotPresent
-        name: disk-autoscaler
-        ports:
-        - containerPort: 9730
-          protocol: TCP
-        resources: {}
-        securityContext:
-          privileged: false
-          capabilities:
-            drop: 
-            - ALL
-          allowPrivilegeEscalation: false
+        - env:
+            - name: DAS_LOG_LEVEL
+              value: info
+            - name: DAS_COST_MODEL_PATH
+              value: http://kubecost-cost-analyzer.kubecost:9090/model
+            - name: DAS_EXCLUDE_NAMESPACES
+              value: "kubecost,kube-system,kube-public"
+          image: gcr.io/guestbook-227502/disk-autoscaler:0.0.17
+          imagePullPolicy: IfNotPresent
+          name: disk-autoscaler
+          ports:
+            - containerPort: 9730
+              protocol: TCP
+          resources: {}
+          securityContext:
+            privileged: false
+            capabilities:
+              drop:
+                - ALL
+            allowPrivilegeEscalation: false
       securityContext:
         seccompProfile:
           type: RuntimeDefault
