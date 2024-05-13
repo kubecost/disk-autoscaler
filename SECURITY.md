@@ -6,10 +6,16 @@ Perform the following steps to verify these artifacts for yourself.
 
 ## Discover Supply Chain Security Artifacts
 
+To easily verify using any of the following methods, set a variable for the tag of the image you wish to inspect.
+
+```sh
+export TAG=<tag>
+```
+
 Use the [Sigstore cosign](https://github.com/sigstore/cosign) tool to show all supply chain security related artifacts available for a given image tag.
 
 ```sh
-cosign tree gcr.io/kubecost1/disk-autoscaler:<tag>
+cosign tree gcr.io/kubecost1/disk-autoscaler:$TAG
 ```
 
 An output similar to below will be displayed.
@@ -31,7 +37,7 @@ An output similar to below will be displayed.
 Use the [Sigstore cosign](https://github.com/sigstore/cosign) tool to verify images have been signed using the [keyless method](https://docs.sigstore.dev/signing/overview/).
 
 ```sh
-cosign verify gcr.io/kubecost1/disk-autoscaler:<tag> --certificate-identity-regexp="https://github.com/kubecost1/disk-autoscaler/.github/workflows/release.yaml@refs/tags/*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq
+cosign verify gcr.io/kubecost1/disk-autoscaler:$TAG --certificate-identity-regexp="https://github.com/kubecost1/disk-autoscaler/.github/workflows/release.yaml@refs/tags/*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq
 ```
 
 The image signature is also available as an offline release asset for every tagged release.
@@ -41,7 +47,7 @@ The image signature is also available as an offline release asset for every tagg
 Verify image provenance from the [SLSA standard](https://slsa.dev/).
 
 ```sh
-cosign verify-attestation --type slsaprovenance02 --certificate-oidc-issuer https://token.actions.githubusercontent.com   --certificate-identity-regexp '^https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v[0-9]+.[0-9]+.[0-9]+$' gcr.io/kubecost1/disk-autoscaler:<tag> | jq .payload -r | base64 --decode | jq
+cosign verify-attestation --type slsaprovenance02 --certificate-oidc-issuer https://token.actions.githubusercontent.com   --certificate-identity-regexp '^https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v[0-9]+.[0-9]+.[0-9]+$' gcr.io/kubecost1/disk-autoscaler:$TAG | jq .payload -r | base64 --decode | jq
 ```
 
 If you wish, you may also use the official [SLSA verifier CLI](https://github.com/slsa-framework/slsa-verifier) with the following command.
@@ -49,13 +55,13 @@ If you wish, you may also use the official [SLSA verifier CLI](https://github.co
 First, find the digest of the image and tag of your choosing by using [crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md).
 
 ```sh
-crane digest gcr.io/kubecost1/disk-autoscaler:<tag>
+crane digest gcr.io/kubecost1/disk-autoscaler:$TAG
 ```
 
 Use `slsa-verifier` along with the digest and the tag to display the attested provenance.
 
 ```sh
-slsa-verifier verify-image gcr.io/kubecost1/disk-autoscaler@<digest> --source-uri github.com/kubecost/disk-autoscaler --source-tag <tag> --print-provenance | jq
+slsa-verifier verify-image gcr.io/kubecost1/disk-autoscaler@<digest> --source-uri github.com/kubecost/disk-autoscaler --source-tag $TAG --print-provenance | jq
 ```
 
 ## Verify SBOM
@@ -63,7 +69,7 @@ slsa-verifier verify-image gcr.io/kubecost1/disk-autoscaler@<digest> --source-ur
 Use the [Sigstore cosign](https://github.com/sigstore/cosign) tool to verify a software bill of materials (SBOM), using the [CycloneDX](https://cyclonedx.org/) standard, has been attested using the [keyless method](https://docs.sigstore.dev/signing/overview/).
 
 ```sh
-cosign verify-attestation --type cyclonedx gcr.io/kubecost1/disk-autoscaler:<tag> --certificate-identity-regexp="https://github.com/kubecost1/disk-autoscaler/.github/workflows/release.yaml@refs/tags/*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq .payload -r | base64 --decode | jq
+cosign verify-attestation --type cyclonedx gcr.io/kubecost1/disk-autoscaler:$TAG --certificate-identity-regexp="https://github.com/kubecost1/disk-autoscaler/.github/workflows/release.yaml@refs/tags/*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq .payload -r | base64 --decode | jq
 ```
 
 The SBOM is also available as an offline release asset for every tagged release.
@@ -73,7 +79,7 @@ The SBOM is also available as an offline release asset for every tagged release.
 Verify the image scan results from [Trivy](https://github.com/aquasecurity/trivy).
 
 ```sh
-cosign verify-attestation --type vuln gcr.io/kubecost1/disk-autoscaler:<tag> --certificate-identity-regexp="https://github.com/kubecost1/disk-autoscaler/.github/workflows/release.yaml@refs/tags/*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq .payload -r | base64 --decode | jq
+cosign verify-attestation --type vuln gcr.io/kubecost1/disk-autoscaler:$TAG --certificate-identity-regexp="https://github.com/kubecost1/disk-autoscaler/.github/workflows/release.yaml@refs/tags/*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq .payload -r | base64 --decode | jq
 ```
 
 The vulnerability scan is also available as an offline release asset for every tagged release.
