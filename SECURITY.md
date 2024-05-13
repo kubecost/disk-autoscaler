@@ -58,6 +58,12 @@ First, find the digest of the image and tag of your choosing by using [crane](ht
 crane digest gcr.io/kubecost1/disk-autoscaler:$TAG
 ```
 
+If you do not have or do not wish to install `crane` and have already pulled the image locally, use the equivalent `docker inspect` command.
+
+```sh
+docker inspect gcr.io/kubecost1/disk-autoscaler:$TAG | jq '.[0].RepoDigests[0]'
+```
+
 Use `slsa-verifier` along with the digest and the tag to display the attested provenance.
 
 ```sh
