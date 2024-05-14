@@ -1,0 +1,6 @@
+builds:
+- id: main
+  dir: ./cmd/diskautoscaler
+  main: .
+  ldflags:
+  - -s -w

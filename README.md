@@ -51,7 +51,7 @@ See [here](https://docs.kubecost.com/install-and-configure/install) for the full
 
 ### Scaling Up
 
-When scaling up, Disk Auto-Scaler increases the size of a given PVC. If the backing storage class for the PVC has `AllowVolumeExpansion` set to `true`, the claim will be modified with the new value. This allows the volume to be dynamically expanded when needed. If `AllowVolumeExpansion` is not set to `true`, the Pod copy method explain in [Scaling Down](#scaling-down) will be used instead.
+When scaling up, Disk Auto-Scaler increases the size of a given PVC. If the backing storage class for the PVC has `AllowVolumeExpansion` set to `true`, the claim will be modified with the new value. This allows the volume to be dynamically expanded when needed. If `AllowVolumeExpansion` is not set to `true`, the Pod copy method explained in [Scaling Down](#scaling-down) will be used instead.
 
 ### Scaling Down
 

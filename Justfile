@@ -9,14 +9,15 @@ check-das:
 test-das:
     {{nocgo}} go test ./...
 
-dev-build TAG: check-das test-das
-    docker buildx build \
-    --rm \
-    --platform "linux/amd64" \
-    -f ./Dockerfile \
-    --provenance=false \
-    --load \
-    -t {{TAG}} \
-    .
+# Need to refactor this recipe to use ko
+# dev-build TAG: check-das test-das
+#     docker buildx build \
+#     --rm \
+#     --platform "linux/amd64" \
+#     -f ./Dockerfile \
+#     --provenance=false \
+#     --load \
+#     -t {{TAG}} \
+#     .
 
-    echo "Built: {{TAG}}"
+#     echo "Built: {{TAG}}"
