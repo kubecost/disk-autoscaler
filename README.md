@@ -49,6 +49,8 @@ See [here](https://docs.kubecost.com/install-and-configure/install) for the full
 
 4. Disk Auto-Scaler will automatically scan the cluster for the annotations above and scale the disks accordingly. Disk Auto-Scaler will re-check every hour for changes in utilization and scale if needed.
 
+For an example StorageClass resource which is supported by Disk Autoscaler, please see [here](aws/gp3-storageClass.yaml).
+
 ### Scaling Up
 
 When scaling up, Disk Auto-Scaler increases the size of a given PVC. If the backing storage class for the PVC has `AllowVolumeExpansion` set to `true`, the claim will be modified with the new value. This allows the volume to be dynamically expanded when needed. If `AllowVolumeExpansion` is not set to `true`, the Pod copy method explained in [Scaling Down](#scaling-down) will be used instead.
@@ -76,7 +78,7 @@ The following are the environment variables which may be passed to the disk auto
 | `DAS_COST_MODEL_PATH` | Location of the cost-model container for getting recommendations (and related) data. | `http://kubecost-cost-analyzer.kubecost:9090/model` |
 | `DAS_KUBECONFIG`      | Path to the Kubeconfig to be used by the disk auto-scaler. | `/foo/bar` |
 | `DAS_LOG_LEVEL`       | Set the desired logging level of the disk auto-scaler. Defaults to `info` if not specified. | `debug` |
-| `DAS_EXCLUDE_NAMESPACES`| The namespaces are excluded from disk auto-scaling. It is recommended to include the kube-system namespace and the namespace where Kubecost is installed. This supports regular expressions. | `kubecost,kube-*,openshift-*`|
+| `DAS_EXCLUDE_NAMESPACES`| The namespaces are excluded from disk auto-scaling. It is recommended to include the kube-system namespace and the namespace where Kubecost is installed. This supports regular expressions. | `"kubecost,kube-*,openshift-*"`|
 
 ### User-Configurable Annotations
 
