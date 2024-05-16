@@ -378,7 +378,7 @@ func (ds *DiskScaler) getPVCMap(ctx context.Context, namespace string, deploymen
 		pvcName := vol.PersistentVolumeClaim.ClaimName
 		k8sPVCInfo, err := ds.getPVCInfo(ctx, namespace, pvcName)
 		if err != nil {
-			// The PVC information is required even thou it's audit mode so we continue and not provide any recommendation or err logs
+			// The PVC information is required even when in audit mode so we continue and don't provide any recommendations or err logs
 			if ds.auditMode {
 				continue
 			}
