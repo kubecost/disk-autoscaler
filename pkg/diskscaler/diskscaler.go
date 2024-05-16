@@ -367,7 +367,7 @@ func (ds *DiskScaler) getPVCMap(ctx context.Context, namespace string, deploymen
 	volumes := v1Dep.Spec.Template.Spec.Volumes
 	for _, vol := range volumes {
 		if vol.PersistentVolumeClaim == nil {
-			// The PV claim name is required even thou it's audit mode so we continue and not provide any recommendation or err logs
+			// The PVC name is required even when in audit mode so we continue and don't provide any recommendation or err logs
 			// this condition is typical encountered when we have ephemeral storage. i.e storage tied to pod lifecyle.
 			if ds.auditMode {
 				continue
