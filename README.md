@@ -79,7 +79,7 @@ The following are the environment variables which may be passed to the disk auto
 | `DAS_KUBECONFIG`      | Path to the Kubeconfig to be used by the disk auto-scaler. | `/foo/bar` |
 | `DAS_LOG_LEVEL`       | Set the desired logging level of the disk auto-scaler. Defaults to `info` if not specified. | `debug` |
 | `DAS_EXCLUDE_NAMESPACES`| The namespaces are excluded from disk auto-scaling. It is recommended to include the kube-system namespace and the namespace where Kubecost is installed. This supports regular expressions. | `"kubecost,kube-*,openshift-*"`|
-| `DAS_AUDIT_MODE`| Read-Only run of Disk Auto Scaler, that provides recommended size of the PV associated with deployment using kubecost PV right sizing API also list the savings predicted by kubecost  | `true`|
+| `DAS_AUDIT_MODE`| Read-only execution of the Disk Auto Scaler, which offers recommended Persistent Volume (PV) sizes for deployments using the Kubecost PV right-sizing API, along with a list of cost savings predicted by Kubecost.| `true`|
 
 ### User-Configurable Annotations
 
@@ -133,3 +133,15 @@ Once disk auto-scaler performs a scaling operation, the following informational 
 | `request.autodiskscaling.kubecost.com/volumeCreatedBy`       | Acknowledgement that a volume was created.            | `kubecost_disk_auto_scaler` |
 | `request.autodiskscaling.kubecost.com/lastScaled`            | The time the volume was last scaled.                  | `2002-10-02T15:00:00Z` |
 
+### Audit Mode run
+
+In audit mode, the Disk Auto Scaler operates in a read-only mode. The logs contain information such as the namespace, deployment, Persistent Volume Claim (PVC), Physical Volume (PV), current size, recommended size, and monthly savings, as illustrated in the logs below.
+
+```
+2024-05-16T22:44:17Z INF Namespace: steven, Deployment: steven-prometheus-server, PVC: steven-prometheus-server, PV: pvc-8fb7e7f6-83ef-444a-b337-0c6698cc9f90, Target Utilization: 70%, current size is: 32Gi, recommended size is: 1Gi, and expected monthly savings is: $3.10
+2024-05-16T22:44:17Z INF Namespace: thanos, Deployment: thanos-compactor, PVC: thanos-compactor, PV: pvc-5f174e0f-8245-4023-880e-d44383ba4c2a, Target Utilization: 70%, current size is: 8Gi, recommended size is: 1Gi, and expected monthly savings is: $0.70
+2024-05-16T22:44:19Z INF Namespace: disk-scaler-demo, Deployment: ubuntu-deployment-scale-up, PVC: scale-up-pvc, PV: pvc-bd21b08e-7f68-4798-b1db-16577a5d9772, Target Utilization: 70%, current size is: 6Gi, recommended size is: 6Gi, and expected monthly savings is: $-0.08
+2024-05-16T22:44:19Z INF Namespace: thomasn-guardduty-tmp, Deployment: thomasn-guardduty-tmp-cost-analyzer, PVC: thomasn-guardduty-tmp-cost-analyzer, PV: pvc-589ada18-bd52-41e6-a768-a2da2e12e67d, Target Utilization: 70%, current size is: 32Gi, recommended size is: 2Gi, and expected monthly savings is: $3.00
+2024-05-16T22:44:20Z INF Namespace: thomasn-guardduty-tmp, Deployment: thomasn-guardduty-tmp-prometheus-server, PVC: thomasn-guardduty-tmp-prometheus-server, PV: pvc-7f3bde56-5ad0-43bb-b7a7-61e6878200d9, Target Utilization: 70%, current size is: 32Gi, recommended size is: 1Gi, and expected monthly savings is: $3.10
+2024-05-16T22:44:21Z INF Namespace: ecr-test, Deployment: ecr-test-cost-analyzer, PVC: ecr-test-cost-analyzer, PV: pvc-cfa8a9c3-88e6-4bbc-8511-9bdeb5e89141, Target Utilization: 70%, current size is: 32Gi, recommended size is: 1Gi, and expected monthly savings is: $3.10
+2024-05-16T22:44:21Z INF Namespace: thomasn-nightly-dev, Deployment: thomasn-nightly-dev-cost-analyzer, PVC: thomasn-nightly-dev-cost-analyzer, PV: pvc-691a99a8-ad61-4432-b125-fd136e8de168, Target Utilization: 70%, current size is: 32Gi, recommended size is: 2Gi, and expected monthly savings is: $3.00```
