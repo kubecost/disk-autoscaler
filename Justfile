@@ -9,15 +9,11 @@ check-das:
 test-das:
     {{nocgo}} go test ./...
 
-# Need to refactor this recipe to use ko
-# dev-build TAG: check-das test-das
-#     docker buildx build \
-#     --rm \
-#     --platform "linux/amd64" \
-#     -f ./Dockerfile \
-#     --provenance=false \
-#     --load \
-#     -t {{TAG}} \
-#     .
-
-#     echo "Built: {{TAG}}"
+# user still has to configure KO_DOCKER_REPO for the destination of ko build image
+# please refer https://ko.build/get-started/
+ko-build VERSION:
+    COMMIT_HASH=$(git rev-parse HEAD) VERSION={{VERSION}} \
+    ko build \
+    ./cmd/diskautoscaler \
+    --bare -t {{VERSION}}
+    echo "Built: {{VERSION}}"
