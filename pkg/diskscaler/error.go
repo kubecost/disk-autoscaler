@@ -14,7 +14,7 @@ type DiskScalingAllFailedError struct {
 }
 
 func (e *DiskScalingAllFailedError) Error() string {
-	return fmt.Sprintf("failed to scale all the persistent volume claims in deployment %s belonging to namespace %s", e.namespace, e.deployment)
+	return fmt.Sprintf("failed to scale all the persistent volume claims in deployment %s belonging to namespace %s", e.deployment, e.namespace)
 }
 
 // Custom error to return to the service calling the
@@ -26,5 +26,5 @@ type DiskScalingPartialFailedError struct {
 }
 
 func (e *DiskScalingPartialFailedError) Error() string {
-	return fmt.Sprintf("failed to scale persistent volume claims %s in deployment %s belonging to namespace %s", strings.Join(e.pvc, ","), e.namespace, e.deployment)
+	return fmt.Sprintf("failed to scale persistent volume claims %s in deployment %s belonging to namespace %s", strings.Join(e.pvc, ","), e.deployment, e.namespace)
 }

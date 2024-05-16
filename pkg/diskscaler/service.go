@@ -209,7 +209,7 @@ func (dss *DiskScalerService) startAutomatedScaling() error {
 				log.Debug().Msgf("No workloads have autoscaling enabled at %s", diskAutoScalerRun)
 			}
 			if status.NumEligible == 0 {
-				log.Debug().Msgf("No workload with autoscaling enabled can be resized again yet at %s", diskAutoScalerRun)
+				log.Debug().Msgf("No workload with autoscaling eligible at %s", diskAutoScalerRun)
 			}
 		}
 	}()
