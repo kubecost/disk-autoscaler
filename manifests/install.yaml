@@ -10,14 +10,14 @@ metadata:
   name: disk-auto-scaler-cr
 rules:
   - apiGroups: [""]
-    resources: ["*"]
-    verbs: ["*"]
+    resources: ["pods","pods/exec","persistentvolumes","persistentvolumeclaims"]
+    verbs: ["get","list","watch","update","patch","create","delete"]
   - apiGroups: ["apps"]
-    resources: ["*"]
-    verbs: ["*"]
+    resources: ["deployments","deployments/scale"]
+    verbs: ["get","list","update","patch"]
   - apiGroups: ["storage.k8s.io"]
-    resources: ["*"]
-    verbs: ["*"]
+    resources: ["storageclasses"]
+    verbs: ["get","list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -67,14 +67,17 @@ spec:
             - name: DAS_COST_MODEL_PATH
               value: http://kubecost-cost-analyzer.kubecost:9090/model
             - name: DAS_EXCLUDE_NAMESPACES
-              value: "kubecost,kube-system,kube-public"
+              value: "kubecost,kube-*,openshift-*"
           image: gcr.io/kubecost1/disk-autoscaler:latest
           imagePullPolicy: IfNotPresent
           name: disk-autoscaler
           ports:
             - containerPort: 9730
               protocol: TCP
-          resources: {}
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
           securityContext:
             privileged: false
             capabilities:
