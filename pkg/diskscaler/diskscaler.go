@@ -92,7 +92,7 @@ func (ds *DiskScaler) runDiskScalingWorkflow(ctx context.Context, namespace, dep
 		return fmt.Errorf("disk scaling failed : %w", err)
 	}
 
-	// No further action is needed if its audit mode
+	// No further action is needed if audit mode is enabled
 	if ds.auditMode {
 		return nil
 	}
