@@ -49,6 +49,16 @@ See [here](https://docs.kubecost.com/install-and-configure/install) for the full
 
 4. Disk Auto-Scaler will automatically scan the cluster for the annotations above and scale the disks accordingly. Disk Auto-Scaler will re-check every hour for changes in utilization and scale if needed.
 
+### Audit Mode
+
+By default, Disk Auto-Scaler runs in audit mode which allows you to assess the changes it would make rather than having it proceed with any such changes. In this mode, it will print the pertinent information about a potential resizing action in the logs along with the savings achieved as a result as shown in the log snippet below.
+
+```log
+2024-05-16T22:44:21Z INF Namespace: thomasn-nightly-dev, Deployment: thomasn-nightly-dev-cost-analyzer, PVC: thomasn-nightly-dev-cost-analyzer, PV: pvc-691a99a8-ad61-4432-b125-fd136e8de168, Target Utilization: 70%, current size is: 32Gi, recommended size is: 2Gi, and expected monthly savings is: $3.00
+```
+
+To disable the default audit mode, change the value of the `DAS_AUDIT_MODE` environment variable to `"false"` and Disk Auto-Scaler will perform the resizing operations automatically.
+
 For an example StorageClass resource which is supported by Disk Autoscaler, please see [here](aws/gp3-storageClass.yaml).
 
 ### Scaling Up
@@ -79,7 +89,7 @@ The following are the environment variables which may be passed to the Disk Auto
 | `DAS_KUBECONFIG`      | Path to the Kubeconfig to be used by the disk auto-scaler. | `/foo/bar` |
 | `DAS_LOG_LEVEL`       | Set the desired logging level of the disk auto-scaler. Defaults to `info` if not specified. | `debug` |
 | `DAS_EXCLUDE_NAMESPACES`| The namespaces are excluded from disk auto-scaling. It is recommended to include the kube-system namespace and the namespace where Kubecost is installed. This supports regular expressions. | `"kubecost,kube-*,openshift-*"`|
-| `DAS_AUDIT_MODE`| Read-only execution of the Disk Auto Scaler, which offers recommended Persistent Volume (PV) sizes for deployments using the Kubecost PV right-sizing API, along with a list of cost savings predicted by Kubecost.| `true`|
+| `DAS_AUDIT_MODE`| Read-only execution of the Disk Auto Scaler, which offers recommended Persistent Volume (PV) sizes for deployments using the Kubecost PV right-sizing API, along with a list of cost savings predicted by Kubecost.| `"true"`|
 
 ## Annotations
 
