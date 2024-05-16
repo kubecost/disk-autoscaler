@@ -387,7 +387,7 @@ func (ds *DiskScaler) getPVCMap(ctx context.Context, namespace string, deploymen
 
 		pvName := k8sPVCInfo.Spec.VolumeName
 
-		// CHeck to see if pv is not hostpath mounted, Kubecost doesnt provide recommendation to hostpath mounts at this time.
+		// Check to see if PV is not hostPath mounted. Kubecost doesn't provide recommendations for hostPath mounts at this time.
 		// i.e volume mounted on node itself rather than a Physical volume.
 		pvInfo, err := ds.getPVInfo(ctx, pvName)
 		if err != nil {
