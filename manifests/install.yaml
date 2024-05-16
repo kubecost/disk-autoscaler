@@ -68,6 +68,8 @@ spec:
               value: http://kubecost-cost-analyzer.kubecost:9090/model
             - name: DAS_EXCLUDE_NAMESPACES
               value: "kubecost,kube-*,openshift-*"
+            - name: DAS_AUDIT_MODE
+              value: "true"
           image: gcr.io/kubecost1/disk-autoscaler:latest
           imagePullPolicy: IfNotPresent
           name: disk-autoscaler

@@ -23,6 +23,8 @@ import (
 const (
 	envPrefix    = "das"
 	logLevelConf = "log_level"
+	dasBurst     = 10
+	dasQPS       = 20
 )
 
 func initK8sRest() (*rest.Config, error) {
@@ -64,6 +66,8 @@ func initK8sRest() (*rest.Config, error) {
 				Str("path", kubeconfigPath).
 				Msgf("Built K8s config from local config")
 		}
+		config.QPS = dasQPS
+		config.Burst = dasBurst
 
 		return config, nil
 	}

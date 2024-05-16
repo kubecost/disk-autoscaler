@@ -102,3 +102,40 @@ func Test_convertKubecostBytesToStorageRecommendation(t *testing.T) {
 		}
 	}
 }
+
+func Test_computeOverHeadPercentForTargetUtilization(t *testing.T) {
+	type testCase struct {
+		name                    string
+		targetUtilization       int
+		expectedOverHeadpercent string
+	}
+
+	testCases := []testCase{
+		{
+			name:                    "when target utilization is 70, equivalent overhead percentage in kubecost",
+			targetUtilization:       70,
+			expectedOverHeadpercent: "42.86",
+		},
+		{
+			name:                    "when target utilization is 80, equivalent overhead percentage in kubecost",
+			targetUtilization:       80,
+			expectedOverHeadpercent: "25.00",
+		},
+		{
+			name:                    "when target utilization is 100, equivalent overhead percentage in kubecost",
+			targetUtilization:       100,
+			expectedOverHeadpercent: "0.00",
+		},
+		{
+			name:                    "when target utilization is 0, equivalent overhead percentage in kubecost",
+			targetUtilization:       0,
+			expectedOverHeadpercent: "42.86",
+		},
+	}
+	for _, tc := range testCases {
+		returnOverHeadpercent := computeOverHeadPercentForTargetUtilization(tc.targetUtilization)
+		if returnOverHeadpercent != tc.expectedOverHeadpercent {
+			t.Fatalf("test case %s: expectedOverHeadpercent %s but received %s", tc.name, tc.expectedOverHeadpercent, returnOverHeadpercent)
+		}
+	}
+}
