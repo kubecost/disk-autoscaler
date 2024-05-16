@@ -45,6 +45,7 @@ type DiskScaler struct {
 	dynamicK8sClient *dynamic.DynamicClient
 	clusterID        string
 	kubecostsvc      *pvsizingrecommendation.KubecostService
+	auditMode        bool
 }
 
 type pvcDetails struct {
@@ -60,7 +61,12 @@ type pvcDetails struct {
 	isSkippedForDeletion bool
 }
 
-func NewDiskScaler(clientConfig *rest.Config, basicK8sClient kubernetes.Interface, dynamicK8sClient *dynamic.DynamicClient, clusterID string, kubecostsvc *pvsizingrecommendation.KubecostService) (*DiskScaler, error) {
+func NewDiskScaler(clientConfig *rest.Config,
+	basicK8sClient kubernetes.Interface,
+	dynamicK8sClient *dynamic.DynamicClient,
+	clusterID string,
+	kubecostsvc *pvsizingrecommendation.KubecostService,
+	auditMode bool) (*DiskScaler, error) {
 	if basicK8sClient == nil {
 		return nil, fmt.Errorf("must have a Kubernetes client")
 	}
@@ -75,6 +81,7 @@ func NewDiskScaler(clientConfig *rest.Config, basicK8sClient kubernetes.Interfac
 		dynamicK8sClient: dynamicK8sClient,
 		clusterID:        clusterID,
 		kubecostsvc:      kubecostsvc,
+		auditMode:        auditMode,
 	}, nil
 }
 
@@ -85,7 +92,10 @@ func (ds *DiskScaler) runDiskScalingWorkflow(ctx context.Context, namespace, dep
 		return fmt.Errorf("disk scaling failed : %w", err)
 	}
 
-	log.Debug().Msgf("ctx: %s, volume map is: %+v", ctx.Value(diskScalerRunContextKey), volMap)
+	// No further action is needed if its audit mode
+	if ds.auditMode {
+		return nil
+	}
 
 	originalScale, err := ds.retryscaleDeployment(ctx, deployment, namespace, 0)
 	if err != nil {
@@ -280,10 +290,10 @@ func (ds *DiskScaler) updateDeploymentWithSmallerSizePV(ctx context.Context, dep
 
 // getKubecostRecommendationForPV is used to get the recommendation from
 // kubecost service for a particular pvName.
-func (ds *DiskScaler) getKubecostRecommendationForPV(ctx context.Context, pvName string, targetUtilization int, interval string) (resource.Quantity, error) {
+func (ds *DiskScaler) getKubecostRecommendationForPV(ctx context.Context, pvName string, targetUtilization int, interval string) (pvsizingrecommendation.RecommendationSizeWithSavings, error) {
 	recommendedStorageQuantity, err := ds.kubecostsvc.GetRecommendation(ctx, pvName, targetUtilization, interval)
 	if err != nil {
-		return resource.Quantity{}, fmt.Errorf("failed to get recommendation from kubecost err: %w", err)
+		return recommendedStorageQuantity, fmt.Errorf("failed to get recommendation from kubecost err: %w", err)
 	}
 	return recommendedStorageQuantity, nil
 }
@@ -357,25 +367,68 @@ func (ds *DiskScaler) getPVCMap(ctx context.Context, namespace string, deploymen
 	volumes := v1Dep.Spec.Template.Spec.Volumes
 	for _, vol := range volumes {
 		if vol.PersistentVolumeClaim == nil {
+			// The PV claim name is required even thou it's audit mode so we continue and not provide any recommendation or err logs
+			// this condition is typical encountered when we have ephemeral storage. i.e storage tied to pod lifecyle.
+			if ds.auditMode {
+				continue
+			}
 			log.Error().Msgf("ctx: %s, deployment %s contains non PV claim volume source", ctx.Value(diskScalerRunContextKey), deploymentName)
-			return volumeMap, fmt.Errorf("deployment %s contains non PV claim volume source", deploymentName)
+			return map[string]*pvcDetails{}, fmt.Errorf("deployment %s contains non PV claim volume source", deploymentName)
 		}
 		pvcName := vol.PersistentVolumeClaim.ClaimName
 		k8sPVCInfo, err := ds.getPVCInfo(ctx, namespace, pvcName)
 		if err != nil {
+			// The PVC information is required even thou it's audit mode so we continue and not provide any recommendation or err logs
+			if ds.auditMode {
+				continue
+			}
 			return map[string]*pvcDetails{}, fmt.Errorf("failed to get volume map for pvc: %s with err: %w", pvcName, err)
+		}
+
+		pvName := k8sPVCInfo.Spec.VolumeName
+
+		// CHeck to see if pv is not hostpath mounted, Kubecost doesnt provide recommendation to hostpath mounts at this time.
+		// i.e volume mounted on node itself rather than a Physical volume.
+		pvInfo, err := ds.getPVInfo(ctx, pvName)
+		if err != nil {
+			// checking pvInfo before asking for recommendation from kubecost is important. In case of audit mode error log is ignore
+			// for this pv if there's any failure.
+			if ds.auditMode {
+				continue
+			}
+			return map[string]*pvcDetails{}, fmt.Errorf("unable to get kubernetes pv information for pv %s with err:%w", pvName, err)
+		}
+
+		spec := k8sPVCInfo.Spec
+		storageCapacity := k8sPVCInfo.Status.Capacity[v1.ResourceStorage]
+		storageClassName := k8sPVCInfo.Spec.StorageClassName
+
+		isValid := ds.isPVValidForDiskScaling(pvInfo)
+		if !isValid {
+			if ds.auditMode {
+				// hostpath mounted pvs are ingnored by disk scaler at this time. In case of audit mode we dont provide any error
+				continue
+			}
+			return map[string]*pvcDetails{}, fmt.Errorf("pv %s is invalid for disk autoscaling", pvName)
+		}
+
+		log.Debug().Msgf("ctx: %s, backing volume name is: %s for pvc: %s", ctx.Value(diskScalerRunContextKey), pvName, pvcName)
+		recommendation, err := ds.getKubecostRecommendationForPV(ctx, pvName, intTargetUtilization, interval)
+		if err == nil {
+			log.Info().Msgf("Namespace: %s, Deployment: %s, PVC: %s, PV: %s, Target Utilization: %d%%, current size is: %s, recommended size is: %s, and expected monthly savings is: $%.2f", namespace, deploymentName, pvcName, pvName, intTargetUtilization, storageCapacity.String(), recommendation.RecommendedResourceSize.String(), recommendation.Savings)
+		}
+		if ds.auditMode {
+			continue
+		}
+		resizeTo := recommendation.RecommendedResourceSize
+		if err != nil {
+			return map[string]*pvcDetails{}, fmt.Errorf("unable to get recommendation from kubecost %w", err)
 		}
 
 		newPVCName, err := ds.newPVCName(ctx, namespace, pvcName)
 		if err != nil {
 			return map[string]*pvcDetails{}, fmt.Errorf("failed to create a new PVC Name: %w", err)
 		}
-
-		pvName := k8sPVCInfo.Spec.VolumeName
-		log.Debug().Msgf("ctx: %s, backing volume name is: %s for pvc: %s", ctx.Value(diskScalerRunContextKey), pvName, pvcName)
-		spec := k8sPVCInfo.Spec
-		storageCapacity := k8sPVCInfo.Status.Capacity[v1.ResourceStorage]
-		storageClassName := k8sPVCInfo.Spec.StorageClassName
 
 		scClass, err := ds.getStorageClassInfo(ctx, k8sPVCInfo.GetName(), *storageClassName)
 		if err != nil {
@@ -396,22 +449,6 @@ func (ds *DiskScaler) getPVCMap(ctx context.Context, namespace string, deploymen
 		if volumeBindingMode != volumeBindingWaitForFirstConsumer {
 			log.Error().Msgf("ctx: %s, unsupported volumeBindingMode %s for storage class %s", ctx.Value(diskScalerRunContextKey), volumeBindingMode, *storageClassName)
 			return map[string]*pvcDetails{}, fmt.Errorf("cannot support volume binding mode %s for storage class %s", volumeBindingMode, *storageClassName)
-		}
-
-		// CHeck to see if pv is not hostpath mounted
-		pvInfo, err := ds.getPVInfo(ctx, pvName)
-		if err != nil {
-			return map[string]*pvcDetails{}, fmt.Errorf("unable to get kubernetes pv information for pv %s with err:%w", pvName, err)
-		}
-
-		isValid := ds.isPVValidForDiskScaling(pvInfo)
-		if !isValid {
-			return map[string]*pvcDetails{}, fmt.Errorf("pv %s is invalid for disk autoscaling", pvName)
-		}
-
-		resizeTo, err := ds.getKubecostRecommendationForPV(ctx, pvName, intTargetUtilization, interval)
-		if err != nil {
-			return map[string]*pvcDetails{}, fmt.Errorf("unable to get recommendation from kubecost %w", err)
 		}
 
 		pvcDetails := &pvcDetails{

@@ -79,6 +79,7 @@ The following are the environment variables which may be passed to the disk auto
 | `DAS_KUBECONFIG`      | Path to the Kubeconfig to be used by the disk auto-scaler. | `/foo/bar` |
 | `DAS_LOG_LEVEL`       | Set the desired logging level of the disk auto-scaler. Defaults to `info` if not specified. | `debug` |
 | `DAS_EXCLUDE_NAMESPACES`| The namespaces are excluded from disk auto-scaling. It is recommended to include the kube-system namespace and the namespace where Kubecost is installed. This supports regular expressions. | `"kubecost,kube-*,openshift-*"`|
+| `DAS_AUDIT_MODE`| Read-Only run of Disk Auto Scaler, that provides recommended size of the PV associated with deployment using kubecost PV right sizing API also list the savings predicted by kubecost  | `true`|
 
 ### User-Configurable Annotations
 

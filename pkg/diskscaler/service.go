@@ -58,12 +58,19 @@ type DiskScalerService struct {
 	ds                     *DiskScaler
 	resizeAll              bool
 	excludedNamespaceRegex *regexp.Regexp
+	auditMode              bool
 }
 
-func NewDiskScalerService(clientConfig *rest.Config, k8sClient kubernetes.Interface, dynamicK8sClient *dynamic.DynamicClient, resizeAll bool, kubecostSvc *pvsizingrecommendation.KubecostService, excludedNamespaces []string) (*DiskScalerService, error) {
+func NewDiskScalerService(clientConfig *rest.Config,
+	k8sClient kubernetes.Interface,
+	dynamicK8sClient *dynamic.DynamicClient,
+	resizeAll bool,
+	auditMode bool,
+	kubecostSvc *pvsizingrecommendation.KubecostService,
+	excludedNamespaces []string) (*DiskScalerService, error) {
 	// To-DO :fill it via kubecost API
 	clusterID := "localCluster"
-	ds, err := NewDiskScaler(clientConfig, k8sClient, dynamicK8sClient, clusterID, kubecostSvc)
+	ds, err := NewDiskScaler(clientConfig, k8sClient, dynamicK8sClient, clusterID, kubecostSvc, auditMode)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create NewDiskScaler: %w", err)
 	}
@@ -79,6 +86,7 @@ func NewDiskScalerService(clientConfig *rest.Config, k8sClient kubernetes.Interf
 		ds:                     ds,
 		resizeAll:              resizeAll,
 		excludedNamespaceRegex: regex,
+		auditMode:              auditMode,
 	}
 	return dss, nil
 }
@@ -158,6 +166,11 @@ func (dss *DiskScalerService) run(diskAutoScalerRun string) (RunStatus, error) {
 
 	}
 	wg.Wait()
+
+	if dss.auditMode {
+		log.Info().Msgf("disk autoscaling audit run at : %s", diskAutoScalerRun)
+		return status, nil
+	}
 	log.Info().Msgf("disk autoscaling run at : %s had success: %d failed: %d", diskAutoScalerRun, status.SuccessRun, status.FailedRun)
 	if result != nil {
 		log.Error().Msgf("disk autoscaling run at : %s errors: %s", diskAutoScalerRun, result.Error())
@@ -188,7 +201,9 @@ func (dss *DiskScalerService) startAutomatedScaling() error {
 				continue
 			}
 			lastRunFailed = false
-
+			if dss.auditMode {
+				return
+			}
 			log.Debug().Msgf("status at %s :%+v, triggered the disk scaling", diskAutoScalerRun, status)
 			if status.NumEnabled == 0 {
 				log.Debug().Msgf("No workloads have autoscaling enabled at %s", diskAutoScalerRun)
@@ -212,6 +227,11 @@ func (dss *DiskScalerService) workloadIsEnabled(meta metav1.ObjectMeta) bool {
 
 	if dss.excludedNamespaceRegex != nil && dss.excludedNamespaceRegex.MatchString(meta.Namespace) {
 		return false
+	}
+
+	// For audit mode we provide recommendation for all deployment workloads
+	if dss.auditMode {
+		return true
 	}
 
 	if dss.resizeAll {
@@ -243,6 +263,11 @@ func (dss *DiskScalerService) workloadIsEligible(meta metav1.ObjectMeta, current
 	// automatically.
 	if meta.Namespace == "kube-system" {
 		return false
+	}
+
+	// For audit mode we provide recommendation for all deployment workloads
+	if dss.auditMode {
+		return true
 	}
 
 	currentTime, err := time.Parse(time.RFC3339, currentRun)
