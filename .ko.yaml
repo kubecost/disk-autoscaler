@@ -3,4 +3,7 @@ builds:
   dir: ./cmd/diskautoscaler
   main: .
   ldflags:
-  - -s -w
+  - -s
+  - -w
+  - -X "main.CommitHash={{.Env.COMMIT_HASH}}"
+  - -X "main.Version={{.Env.VERSION}}"
