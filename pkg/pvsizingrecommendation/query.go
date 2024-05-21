@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"net/http"
 	"path"
@@ -183,7 +183,7 @@ func (krs *KubecostService) getFromCacheOrFetch(window string, overheadPercent s
 		return []byte{}, fmt.Errorf("executing query: %w", err)
 	}
 	defer resp.Body.Close()
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, fmt.Errorf("reading response body: %s", err)
 	}
