@@ -50,8 +50,11 @@ jobs:
       - name: Go Test
         run: go test -v -count=1 -race -shuffle=on -coverprofile=coverage.txt ./...
 
-      - name: Go vulnerability check
-        uses: golang/govulncheck-action@7da72f730e37eeaad891fcff0a532d27ed737cd4 # v1.0.1
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: govulncheck -test ./...
 
       - name: Upload coverage report
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
