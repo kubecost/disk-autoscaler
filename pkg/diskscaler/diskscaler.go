@@ -631,11 +631,11 @@ func (ds *DiskScaler) dataMoverTransientPod(ctx context.Context, namespace strin
 					Image:   "ubuntu",
 					Command: []string{"/bin/bash", "-c", "sleep infinity"},
 					VolumeMounts: []v1.VolumeMount{
-						v1.VolumeMount{
+						{
 							Name:      "orig-vol-mount",
 							MountPath: "/oldData",
 						},
-						v1.VolumeMount{
+						{
 							Name:      "backup-vol-mount",
 							MountPath: "/newData",
 						},
@@ -643,7 +643,7 @@ func (ds *DiskScaler) dataMoverTransientPod(ctx context.Context, namespace strin
 				},
 			},
 			Volumes: []v1.Volume{
-				v1.Volume{
+				{
 					Name: "orig-vol-mount",
 					VolumeSource: v1.VolumeSource{
 						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
@@ -651,7 +651,7 @@ func (ds *DiskScaler) dataMoverTransientPod(ctx context.Context, namespace strin
 						},
 					},
 				},
-				v1.Volume{
+				{
 					Name: "backup-vol-mount",
 					VolumeSource: v1.VolumeSource{
 						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{

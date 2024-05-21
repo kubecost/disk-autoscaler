@@ -86,11 +86,10 @@ func main() {
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
-	viper.BindPFlags(pflag.CommandLine)
-
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	pflag.Parse()
-	viper.BindPFlags(pflag.CommandLine)
+	err := viper.BindPFlags(pflag.CommandLine)
+	if err != nil {
+		log.Error().Msgf("viper.BindPFlags(): unable to bing flags with err: %v", err)
+	}
 
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if logLevelStr := viper.GetString(logLevelConf); len(logLevelStr) > 0 {
