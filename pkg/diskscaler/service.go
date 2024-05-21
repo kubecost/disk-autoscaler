@@ -128,7 +128,7 @@ func (dss *DiskScalerService) getDiskScalerDeploymentWorkload(ctx context.Contex
 }
 
 func (dss *DiskScalerService) run(diskAutoScalerRun string) (RunStatus, error) {
-	status := RunStatus{}
+	var status RunStatus
 	serviceCtx := context.Background()
 	getDeploymentContext, cancel := context.WithTimeout(context.WithValue(serviceCtx, diskScalerServiceContextKey, "getDeployment"), 60*time.Second)
 	defer cancel()
