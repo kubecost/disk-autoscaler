@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: CI checks
+permissions: {}
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - main
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
+
+      - name: Setup Golang
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+        with:
+          go-version: 1.22
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@a4f60bb28d35aeee14e6880718e0c85ff1882e64 # v6.0.1
+        with:
+          version: v1.58
+
+      - name: Go Format
+        run: gofmt -s -w . && git diff --exit-code
+
+      - name: Go Vet
+        run: go vet ./...
+
+      - name: Go Tidy
+        run: go mod tidy && git diff --exit-code
+
+      - name: Go Mod
+        run: go mod download
+
+      - name: Go Mod Verify
+        run: go mod verify
+
+      - name: Go Generate
+        run: go generate ./... && git diff --exit-code
+
+      - name: Go Build
+        run: go build -o /dev/null ./...
+
+      - name: Go Test
+        run: go test -v -count=1 -race -shuffle=on -coverprofile=coverage.txt ./...
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: govulncheck -test ./...
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        with:
+          name: coverage.txt
+          path: coverage.txt
+          if-no-files-found: error
