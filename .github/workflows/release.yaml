@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
 ### This workflow uses the SLSA container provenance generator workflow
 ### (see https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md)
 ### to generate a SLSA provenance type predicate for a container image built by ko and attesting to it and others
