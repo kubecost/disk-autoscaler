@@ -3,8 +3,12 @@ package diskscaler
 import (
 	"bytes"
 	"context"
+	"embed"
 	"fmt"
+	"html/template"
+	"io"
 	"math/rand"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -24,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/kubectl/pkg/scheme"
+	"sigs.k8s.io/yaml"
 )
 
 var supportedSCProvisioner = []string{"ebs.csi.aws.com"}
@@ -35,9 +40,32 @@ const (
 	inactivityDuringDelay             = 10 * time.Second
 	// Setting a timeout of 4 minutes on any creation or delete operation of disk scaler
 	diskScalingOperationTimeout = 4 * time.Minute
+	copierContainerName         = "temp-container"
+	copierDefaultImage          = "cgr.dev/chainguard/wolfi-base:latest"
+	ServiceMetaDataLabel        = "kubecost-disk-autoscaler"
+	PartOfMetaDataLabel         = "kubecost-disk-autoscaler"
+	ComponentMetaDataLabel      = "copy-pod"
 )
 
 var allowedCharactersForPVCName = []rune("abcdefghijklmnopqrstuvwxyz")
+
+type CopierTemplateData struct {
+	Name          string
+	Version       string
+	Component     string
+	PartOf        string
+	Service       string
+	PodName       string
+	Namespace     string
+	ContainerName string
+	OriginalPVC   string
+	NewPVC        string
+	Image         string
+	RunAsUser     int64
+}
+
+//go:embed copier.yaml
+var templateFS embed.FS
 
 type DiskScaler struct {
 	clientConfig     *rest.Config
@@ -46,6 +74,7 @@ type DiskScaler struct {
 	clusterID        string
 	kubecostsvc      *pvsizingrecommendation.KubecostService
 	auditMode        bool
+	version          string
 }
 
 type pvcDetails struct {
@@ -66,7 +95,8 @@ func NewDiskScaler(clientConfig *rest.Config,
 	dynamicK8sClient *dynamic.DynamicClient,
 	clusterID string,
 	kubecostsvc *pvsizingrecommendation.KubecostService,
-	auditMode bool) (*DiskScaler, error) {
+	auditMode bool,
+	version string) (*DiskScaler, error) {
 	if basicK8sClient == nil {
 		return nil, fmt.Errorf("must have a Kubernetes client")
 	}
@@ -82,6 +112,7 @@ func NewDiskScaler(clientConfig *rest.Config,
 		clusterID:        clusterID,
 		kubecostsvc:      kubecostsvc,
 		auditMode:        auditMode,
+		version:          version,
 	}, nil
 }
 
@@ -616,54 +647,13 @@ func (ds *DiskScaler) createPVCFromASpec(ctx context.Context, namespace string, 
 // dataMoverTransientPod create a transient pod to move data between original PV claim volume source to new PV Claim volume source
 func (ds *DiskScaler) dataMoverTransientPod(ctx context.Context, namespace string, copierPodName string, originalPVC string, newPVC string) error {
 	cpCommand := "if [ -z \"$(ls -A /oldData)\" ]; then echo \"directory is empty no need to copy\"; else  cp -r /oldData/* /newData/; fi"
-	req := &v1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: copierPodName,
-		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name:    "temp-container",
-					Image:   "ubuntu",
-					Command: []string{"/bin/bash", "-c", "sleep infinity"},
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "orig-vol-mount",
-							MountPath: "/oldData",
-						},
-						{
-							Name:      "backup-vol-mount",
-							MountPath: "/newData",
-						},
-					},
-				},
-			},
-			Volumes: []v1.Volume{
-				{
-					Name: "orig-vol-mount",
-					VolumeSource: v1.VolumeSource{
-						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-							ClaimName: originalPVC,
-						},
-					},
-				},
-				{
-					Name: "backup-vol-mount",
-					VolumeSource: v1.VolumeSource{
-						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-							ClaimName: newPVC,
-						},
-					},
-				},
-			},
-		},
+
+	podSpec, err := createCopierPodKubernetesObject(copierPodName, namespace, originalPVC, newPVC, ds.version)
+	if err != nil {
+		return fmt.Errorf("createCopierPodKubernetesObject failed: %w", err)
 	}
 
-	resp, err := ds.basicK8sClient.CoreV1().Pods(namespace).Create(ctx, req, metav1.CreateOptions{})
+	resp, err := ds.basicK8sClient.CoreV1().Pods(namespace).Create(ctx, &podSpec, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create copier pod %s in namespace %s with err: %w ", copierPodName, namespace, err)
 	}
@@ -817,6 +807,63 @@ func (ds *DiskScaler) deleteTransientPod(ctx context.Context, namespace string, 
 
 	log.Debug().Msgf("ctx: %s, successfully delete transient pod: %s in namespace: %s", ctx.Value(diskScalerRunContextKey), copierPodName, namespace)
 	return nil
+}
+
+func createCopierPodKubernetesObject(copierPodName, namespace, originalPVC, newPVC, version string) (v1.Pod, error) {
+	// Read the pod template YAML file
+	podTemplateYAML, err := templateFS.ReadFile("copier.yaml")
+	// podTemplateYAML, err := os.ReadFile("copier.yaml")
+	if err != nil {
+		return v1.Pod{}, fmt.Errorf("failed to read the copier.yaml with err: %w ", err)
+	}
+
+	data := CopierTemplateData{
+		Name:          kubecostDataMoverTransientPodName,
+		Version:       version,
+		Component:     ComponentMetaDataLabel,
+		PartOf:        PartOfMetaDataLabel,
+		Service:       ServiceMetaDataLabel,
+		PodName:       copierPodName,
+		Namespace:     namespace,
+		ContainerName: copierContainerName,
+		Image:         copierDefaultImage,
+		OriginalPVC:   originalPVC,
+		NewPVC:        newPVC,
+		RunAsUser:     1000,
+	}
+
+	//tmpl, err := template.New("pod").Parse(string(podTemplateYAML))
+	tmpl := template.Must(template.New("pod").Parse(string(podTemplateYAML)))
+
+	// Create a buffer to hold the final YAML
+	var buf []byte
+	bufFile, err := os.CreateTemp("", fmt.Sprintf("%s.yaml", copierPodName))
+	if err != nil {
+		return v1.Pod{}, fmt.Errorf("failed to create temp file for pod %s in namespace %s: %v", copierPodName, namespace, err)
+	}
+	defer os.Remove(bufFile.Name())
+
+	// Execute the template and write to the buffer
+	if err := tmpl.Execute(bufFile, data); err != nil {
+		return v1.Pod{}, fmt.Errorf("failed to execute template for pod %s in namespace %s: %v", copierPodName, namespace, err)
+	}
+
+	// Read the buffer content as a string
+	_, err = bufFile.Seek(0, 0)
+	if err != nil {
+		return v1.Pod{}, fmt.Errorf("unable to read entire buffer to execute template for pod %s in namespace %s: %v", copierPodName, namespace, err)
+	}
+	buf, err = io.ReadAll(bufFile)
+	if err != nil {
+		return v1.Pod{}, fmt.Errorf("failed to read temp file for pod %s in namespace %s: %v", copierPodName, namespace, err)
+	}
+
+	var pod v1.Pod
+	if err := yaml.Unmarshal(buf, &pod); err != nil {
+		return v1.Pod{}, fmt.Errorf("failed to unmarshal YAML for pod %s in namespace %s: %v", copierPodName, namespace, err)
+	}
+
+	return pod, nil
 }
 
 // isGreaterQuantity returns true if resizeTo is greater than original size

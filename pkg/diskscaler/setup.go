@@ -18,7 +18,7 @@ const (
 	KubecostNamespace = "kubecost"
 )
 
-func Setup(mux *http.ServeMux, clientConfig *rest.Config, k8sClient kubernetes.Interface, dynamicK8sClient *dynamic.DynamicClient) error {
+func Setup(mux *http.ServeMux, clientConfig *rest.Config, k8sClient kubernetes.Interface, dynamicK8sClient *dynamic.DynamicClient, version string) error {
 	costModelPath, err := getDiskScalerCostModelPath()
 	if len(costModelPath) == 0 {
 		return fmt.Errorf("setup of Disk Auto Scaler failed: %w", err)
@@ -47,7 +47,7 @@ func Setup(mux *http.ServeMux, clientConfig *rest.Config, k8sClient kubernetes.I
 	}
 
 	recommendationSvc := pvsizingrecommendation.NewKubecostService(costModelPath)
-	dss, err := NewDiskScalerService(clientConfig, k8sClient, dynamicK8sClient, resizeAll, auditMode, recommendationSvc, excludedNamespaces)
+	dss, err := NewDiskScalerService(clientConfig, k8sClient, dynamicK8sClient, resizeAll, auditMode, recommendationSvc, excludedNamespaces, version)
 	if err != nil {
 		return fmt.Errorf("failed to create disk scaler service: %w", err)
 	}
