@@ -119,7 +119,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	err = diskscaler.Setup(mux, k8sRest, baseK8sClient, dynamicK8sClient)
+	err = diskscaler.Setup(mux, k8sRest, baseK8sClient, dynamicK8sClient, Version)
 	if err != nil {
 		log.Error().Err(err).Msgf("Kubescaler setup failed")
 	}
