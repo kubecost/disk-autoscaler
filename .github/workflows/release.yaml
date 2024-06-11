@@ -126,7 +126,7 @@ jobs:
       IMAGE: "${{ needs.build.outputs.image }}"
     steps:
     - name: Scan for vulnerabilities
-      uses: aquasecurity/trivy-action@fd25fed6972e341ff0007ddb61f77e88103953c2 # v0.20.0 (Trivy v0.51.1)
+      uses: aquasecurity/trivy-action@595be6a0f6560a0a8fc419ddf630567fc623531d # v0.20.0 (Trivy v0.51.1)
       with: 
         image-ref: ${{ env.IMAGE }}
         format: cosign-vuln
