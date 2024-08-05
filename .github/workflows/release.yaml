@@ -92,7 +92,7 @@ jobs:
         echo "Hash of sbom.json is: $SBOM_DIGEST"
 
     - name: Upload SBOM
-      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
       with:
         name: sbom.json
         path: sbom.json
@@ -141,7 +141,7 @@ jobs:
         echo "Hash of scan.json is: $SCAN_DIGEST"
 
     - name: Upload vulnerability scan report
-      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4.3.5
       with:
         name: scan.json
         path: scan.json
