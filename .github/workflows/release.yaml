@@ -33,7 +33,7 @@ jobs:
       uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
     - name: Setup Golang
-      uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
       with:
         go-version: 1.22
 
@@ -92,7 +92,7 @@ jobs:
         echo "Hash of sbom.json is: $SBOM_DIGEST"
 
     - name: Upload SBOM
-      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+      uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
       with:
         name: sbom.json
         path: sbom.json
@@ -141,7 +141,7 @@ jobs:
         echo "Hash of scan.json is: $SCAN_DIGEST"
 
     - name: Upload vulnerability scan report
-      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+      uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
       with:
         name: scan.json
         path: scan.json
