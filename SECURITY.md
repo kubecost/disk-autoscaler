@@ -72,10 +72,10 @@ slsa-verifier verify-image gcr.io/kubecost1/disk-autoscaler@<digest> --source-ur
 
 ## Verify SBOM
 
-Use the [Sigstore cosign](https://github.com/sigstore/cosign) tool to verify a software bill of materials (SBOM), using the [CycloneDX](https://cyclonedx.org/) standard, has been attested using the [keyless method](https://docs.sigstore.dev/signing/overview/).
+Use the [Sigstore cosign](https://github.com/sigstore/cosign) tool to verify a software bill of materials (SBOM), using the [SPDX](https://spdx.dev/) standard, has been attested using the [keyless method](https://docs.sigstore.dev/signing/overview/).
 
 ```sh
-cosign verify-attestation --type cyclonedx gcr.io/kubecost1/disk-autoscaler:$TAG --certificate-identity-regexp="https://github.com/kubecost/disk-autoscaler/.github/workflows/release.yaml@refs/tags/*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq .payload -r | base64 --decode | jq
+cosign verify-attestation --type spdxjson gcr.io/kubecost1/disk-autoscaler:$TAG --certificate-identity-regexp="https://github.com/kubecost/disk-autoscaler/.github/workflows/release.yaml@refs/tags/*" --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq .payload -r | base64 --decode | jq
 ```
 
 The SBOM is also available as an offline release asset for every tagged release.
