@@ -47,7 +47,11 @@ func (db *MysqlConnection) InsertPopulationData() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %v", err)
 	}
-	defer sqlDb.Close()
+	defer func() {
+		if err := sqlDb.Close(); err != nil {
+			log.Printf("error closing SQL DB: %v", err)
+		}
+	}()
 
 	for _, year := range avialOpenPopulationAPIYears {
 		url := fmt.Sprintf("https://datausa.io/api/data?drilldowns=State&measures=Population&year=%s", year)
@@ -55,7 +59,11 @@ func (db *MysqlConnection) InsertPopulationData() error {
 		if err != nil {
 			return fmt.Errorf("failed to fetch State data: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				log.Printf("error closing response body for InsertPopulationData(): %v", err)
+			}
+		}()
 
 		var populationData PopulationData
 		if err := json.NewDecoder(resp.Body).Decode(&populationData); err != nil {
@@ -66,7 +74,11 @@ func (db *MysqlConnection) InsertPopulationData() error {
 		if err != nil {
 			return fmt.Errorf("failed to prepare statement: %v", err)
 		}
-		defer stmt.Close()
+		defer func() {
+			if err := stmt.Close(); err != nil {
+				log.Printf("error closing DB statement: %v", err)
+			}
+		}()
 
 		for _, data := range populationData.Data {
 			_, err := stmt.Exec(data.Id, data.State, data.Year, data.Population)
@@ -85,7 +97,11 @@ func (db *MysqlConnection) InsertPopulationData() error {
 		if err != nil {
 			return fmt.Errorf("failed to fetch County data: %v", err)
 		}
-		defer respCounty.Body.Close()
+		defer func() {
+			if err := respCounty.Body.Close(); err != nil {
+				log.Printf("error closing county data API response: %v", err)
+			}
+		}()
 
 		var populationCountyData PopulationCountyData
 		if err := json.NewDecoder(respCounty.Body).Decode(&populationCountyData); err != nil {
@@ -96,7 +112,11 @@ func (db *MysqlConnection) InsertPopulationData() error {
 		if err != nil {
 			return fmt.Errorf("failed to prepare statement: %v", err)
 		}
-		defer stmtCounty.Close()
+		defer func() {
+			if err := stmtCounty.Close(); err != nil {
+				log.Printf("error closing DB statement: %v", err)
+			}
+		}()
 
 		for _, data := range populationCountyData.Data {
 			_, err := stmtCounty.Exec(data.Id, data.County, data.Year, data.Population)
