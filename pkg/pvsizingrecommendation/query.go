@@ -69,7 +69,12 @@ func (krs *KubecostService) CheckAvailable(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to execute request: %s", err)
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("error closing response body for CheckAvailable(): %v", err)
+		}
+	}()
 
 	log.Debug().
 		Int("status", resp.StatusCode).
@@ -182,7 +187,13 @@ func (krs *KubecostService) getFromCacheOrFetch(window string, overheadPercent s
 	if err != nil {
 		return []byte{}, fmt.Errorf("executing query: %w", err)
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("error closing response body for getRecommendation(): %v", err)
+		}
+	}()
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, fmt.Errorf("reading response body: %s", err)
