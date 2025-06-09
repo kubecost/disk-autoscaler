@@ -126,7 +126,7 @@ jobs:
       IMAGE: "${{ needs.build.outputs.image }}"
     steps:
     - name: Scan for vulnerabilities
-      uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0
+      uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37
       env:
         TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db,public.ecr.aws/aquasecurity/trivy-db
       with:
