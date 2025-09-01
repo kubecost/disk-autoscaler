@@ -8,7 +8,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/rs/zerolog v1.33.0
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.9
 	github.com/spf13/viper v1.19.0
 	k8s.io/api v0.33.0
 	k8s.io/apimachinery v0.33.0
