@@ -230,7 +230,7 @@ jobs:
         yq -i 'select(.kind=="Deployment") .spec.template.spec.containers[0].image = "${{ env.IMAGE }}"' manifests/install.yaml
 
     - name: Add files to release assets
-      uses: softprops/action-gh-release@v2
+      uses: kubecost/github-actions/action-gh-release@main
       with:
         files: |
           scan.json
