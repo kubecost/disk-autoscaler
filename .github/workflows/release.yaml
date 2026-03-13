@@ -35,7 +35,7 @@ jobs:
     - name: Setup Golang
       uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a
       with:
-        go-version: 1.22
+        go-version: 1.24.13
 
     - name: Setup ko
       run: go install github.com/google/ko@latest
@@ -229,8 +229,15 @@ jobs:
       run: |
         yq -i 'select(.kind=="Deployment") .spec.template.spec.containers[0].image = "${{ env.IMAGE }}"' manifests/install.yaml
 
+    - name: Checkout github-actions
+      uses: actions/checkout@v4
+      with:
+        repository: kubecost/github-actions
+        path: github-actions
+        token: ${{ secrets.ACTIONS_PAT }}
+
     - name: Add files to release assets
-      uses: softprops/action-gh-release@v2
+      uses: ./github-actions/action-gh-release
       with:
         files: |
           scan.json
