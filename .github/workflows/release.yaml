@@ -229,18 +229,13 @@ jobs:
       run: |
         yq -i 'select(.kind=="Deployment") .spec.template.spec.containers[0].image = "${{ env.IMAGE }}"' manifests/install.yaml
 
-    - name: Checkout github-actions
-      uses: actions/checkout@v4
-      with:
-        repository: kubecost/github-actions
-        path: github-actions
-        token: ${{ secrets.ACTIONS_PAT }}
-
     - name: Add files to release assets
-      uses: ./github-actions/action-gh-release
-      with:
-        files: |
-          scan.json
-          sbom.json
-          signature.sig
-          manifests/install.yaml
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        files=(scan.json sbom.json signature.sig manifests/install.yaml)
+        if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+          gh release upload "${{ github.ref_name }}" "${files[@]}" --clobber
+        else
+          gh release create "${{ github.ref_name }}" "${files[@]}"
+        fi
