@@ -30,10 +30,10 @@ jobs:
       IMAGE_NAME: ${{ env.IMAGE_NAME }}
     steps:
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      uses: actions/checkout@v5
 
     - name: Setup Golang
-      uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a
+      uses: actions/setup-go@v6
       with:
         go-version: 1.25.11
 
@@ -92,7 +92,7 @@ jobs:
         echo "Hash of sbom.json is: $SBOM_DIGEST"
 
     - name: Upload SBOM
-      uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b
+      uses: actions/upload-artifact@v5
       with:
         name: sbom.json
         path: sbom.json
@@ -143,7 +143,7 @@ jobs:
         echo "Hash of scan.json is: $SCAN_DIGEST"
 
     - name: Upload vulnerability scan report
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@v5
       with:
         name: scan.json
         path: scan.json
@@ -164,7 +164,7 @@ jobs:
     needs: [provenance, scan, build]
     steps:
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@v5
 
     - name: Authenticate to GCP
       uses: google-github-actions/auth@v2
@@ -182,7 +182,7 @@ jobs:
         gcloud --quiet auth configure-docker
 
     - name: Download files
-      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      uses: actions/download-artifact@v5
       with:
         merge-multiple: true
         path: ./
@@ -230,7 +230,7 @@ jobs:
         yq -i 'select(.kind=="Deployment") .spec.template.spec.containers[0].image = "${{ env.IMAGE }}"' manifests/install.yaml
 
     - name: Checkout github-actions
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         repository: kubecost/github-actions
         path: github-actions
