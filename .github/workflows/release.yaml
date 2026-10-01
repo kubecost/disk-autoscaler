@@ -35,7 +35,7 @@ jobs:
     - name: Setup Golang
       uses: actions/setup-go@v6
       with:
-        go-version: 1.25.11
+        go-version: 1.26.8
 
     - name: Setup ko
       run: go install github.com/google/ko@latest
