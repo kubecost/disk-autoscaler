@@ -11,7 +11,7 @@ on:
       - "*"
   workflow_dispatch: {}
 env:
-  REGISTRY: gcr.io/kubecost1
+  REGISTRY: icr.io/kubecost
   IMAGE_NAME: disk-autoscaler
 jobs:
   # Publish with ko build
@@ -40,20 +40,12 @@ jobs:
     - name: Setup ko
       run: go install github.com/google/ko@latest
 
-    - name: Authenticate to GCP
-      uses: google-github-actions/auth@v2
+    - name: Log in to ICR
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
       with:
-        workload_identity_provider: projects/416184586880/locations/global/workloadIdentityPools/integrations/providers/github-provider
-        service_account: github-actions@kubecost1.iam.gserviceaccount.com
-
-    - name: Setup gcloud
-      uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: kubecost1
-
-    - name: gcloud auth configure-docker
-      run: |
-        gcloud --quiet auth configure-docker
+        registry: icr.io
+        username: iamapikey
+        password: ${{ secrets.IBM_CLOUD_API_KEY }}
 
     - name: Publish image and SBOM (SPDX)
       id: ko-build
@@ -111,8 +103,9 @@ jobs:
     with:
       digest: "${{ needs.build.outputs.digest }}"
       image: ${{ needs.build.outputs.REGISTRY }}/${{needs.build.outputs.IMAGE_NAME}}
-      gcp-workload-identity-provider: projects/416184586880/locations/global/workloadIdentityPools/integrations/providers/github-provider
-      gcp-service-account: github-actions@kubecost1.iam.gserviceaccount.com
+      registry-username: iamapikey
+    secrets:
+      registry-password: ${{ secrets.IBM_CLOUD_API_KEY }}
 
   # Scan the image using Trivy. Check the hash of the scan file to ensure no tampering between jobs.
   scan:
@@ -166,20 +159,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-    - name: Authenticate to GCP
-      uses: google-github-actions/auth@v2
+    - name: Log in to ICR
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
       with:
-        workload_identity_provider: projects/416184586880/locations/global/workloadIdentityPools/integrations/providers/github-provider
-        service_account: github-actions@kubecost1.iam.gserviceaccount.com
-
-    - name: Setup gcloud
-      uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: kubecost1
-
-    - name: gcloud auth configure-docker
-      run: |
-        gcloud --quiet auth configure-docker
+        registry: icr.io
+        username: iamapikey
+        password: ${{ secrets.IBM_CLOUD_API_KEY }}
 
     - name: Download files
       uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
